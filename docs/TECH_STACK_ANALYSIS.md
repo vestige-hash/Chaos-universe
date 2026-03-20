@@ -39,20 +39,43 @@
 | **Risk** | Rapid deprecation; weaker for complex multi-step tasks |
 | **Fit** | 7/10 — Great as a secondary/cheap model for simple tasks and multimodal input |
 
-### 1.4 Open-Source LLMs (Llama 4, Mistral, Qwen)
+### 1.4 Ollama (Local Dev) — RECOMMENDED FOR DEVELOPMENT
 
 | Attribute | Detail |
 |-----------|--------|
-| **What** | Self-hosted models for privacy, cost control, and customization |
+| **What** | Local LLM runner — download and run open-source models with one command |
+| **Pros** | **$0 cost**, no API key needed, OpenAI-compatible API on localhost, runs Llama 3.3/Qwen/Mistral/Gemma, offline-capable, no rate limits |
+| **Cons** | Needs decent hardware (8GB+ RAM for 7B models, 16GB+ for 13B), weaker than Claude for complex reasoning |
+| **Cost** | **$0** — runs on your existing machine |
+| **Install** | `curl -fsSL https://ollama.com/install.sh \| sh` then `ollama pull llama3.3` |
+| **API** | OpenAI-compatible at `http://localhost:11434/v1` |
+| **Risk** | Model quality gap vs Claude; not for production |
+| **Fit** | 9/10 — Perfect for dev/test; swap to Claude in prod with zero code changes |
+
+**Recommended Dev Models (Ollama):**
+
+| Model | Size | RAM Needed | Best For |
+|-------|------|-----------|----------|
+| **llama3.3:8b** | 4.7GB | 8GB | General dev/testing, good quality |
+| **qwen2.5:7b** | 4.4GB | 8GB | Strong coding + reasoning |
+| **mistral:7b** | 4.1GB | 8GB | Fast, good instruction following |
+| **gemma2:9b** | 5.4GB | 10GB | Best quality at small size |
+| **llama3.3:70b** | 40GB | 48GB | Near-Claude quality (if you have the hardware) |
+
+### 1.5 Open-Source LLMs (Cloud/Self-Hosted)
+
+| Attribute | Detail |
+|-----------|--------|
+| **What** | Self-hosted models on cloud GPUs for staging/shared environments |
 | **Pros** | Free to run, full data privacy, fine-tunable, no rate limits |
-| **Cons** | Llama 4 Maverick needs 350GB+ VRAM even quantized, significant DevOps overhead, weaker than commercial APIs |
-| **Cost** | Free (software), but GPU hardware: $2-10K/mo for capable setups |
+| **Cons** | Llama 4 Maverick needs 350GB+ VRAM even quantized, significant DevOps overhead |
+| **Cost** | Free (software), but GPU hardware: $2-10K/mo for capable cloud setups |
 | **Risk** | Massive infrastructure burden; models lag behind commercial offerings |
-| **Fit** | 5/10 — Not recommended for v1; revisit when project scales |
+| **Fit** | 5/10 — Not needed; Ollama covers dev, Claude covers prod |
 
-**RECOMMENDATION:** **Claude API direct** (`@anthropic-ai/sdk`) as primary brain. We have direct Anthropic access — no middleman needed. Lowest latency, full feature access day-one, native tool use and streaming.
+**RECOMMENDATION:** **Ollama (free)** for development and testing. **Claude API direct** (`@anthropic-ai/sdk`) for production. Vercel AI SDK provider pattern makes them interchangeable with zero code changes.
 
-### Claude Models (Direct API)
+### Claude Models (Direct API — Production)
 
 | Model | Input/MTok | Output/MTok | Context | Best For |
 |-------|-----------|-------------|---------|----------|
@@ -66,7 +89,8 @@
 |---------|---------|
 | **`@anthropic-ai/sdk`** | Official Anthropic SDK — full tool use, streaming, batching, prompt caching |
 | **`claude_agent_sdk`** | Claude Agent SDK — multi-step agentic workflows with tool loops |
-| **Vercel AI SDK + `@ai-sdk/anthropic`** | Best for Next.js streaming UI integration |
+| **Vercel AI SDK + `@ai-sdk/anthropic`** | Production: Claude via Next.js streaming UI |
+| **`@ai-sdk/openai-compatible`** | Development: Ollama local models via same Vercel AI SDK interface |
 
 ### Recommended Routing Chain
 
@@ -550,6 +574,7 @@ const audio = await tts.generate('Hello, I am your JARVIS assistant.', { voice: 
 
 | Tier | Components | Est. Monthly Cost |
 |------|-----------|-------------------|
+| **Local Dev** | Ollama (local LLM) + pgvector (local Docker) + Kokoro TTS (browser) + Transformers.js Whisper (browser) | **$0/mo** |
 | **MVP / Solo Dev** | Claude Haiku (direct API) + pgvector + Kokoro TTS (browser) + Transformers.js Whisper (browser) + Vercel Free + Helicone Free | **$10-30/mo** |
 | **Beta Launch** | Claude Sonnet (direct API) + faster-whisper (Docker) + Kokoro TTS (server) + Fish Speech voice clone + Vercel Pro + Clerk Free | **$50-150/mo** |
 | **Production** | Claude Opus (direct API) + Haiku routing + faster-whisper + Kokoro/Fish Speech + Vercel Pro + Trigger.dev + Clerk Pro + Helicone | **$200-600/mo** |
@@ -563,7 +588,8 @@ const audio = await tts.generate('Hello, I am your JARVIS assistant.', { voice: 
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| **Intelligence** | Claude Opus/Sonnet 4.6 via direct Anthropic API | Best reasoning, tool use, agentic behavior — no middleman |
+| **Intelligence (Dev)** | Ollama + Llama 3.3 / Qwen 2.5 (local) | **$0** — free local dev, no API key needed |
+| **Intelligence (Prod)** | Claude Opus/Sonnet 4.6 via direct Anthropic API | Best reasoning, tool use, agentic behavior |
 | **Cheap Tasks** | Claude Haiku 4.5 ($1/MTok) | 5x cheaper than Opus for classification/routing |
 | **Agent Framework** | Claude Agent SDK + Vercel AI SDK | Native tool use + streaming UI |
 | **Memory** | pgvector + RAG pipeline | Zero new infrastructure |
