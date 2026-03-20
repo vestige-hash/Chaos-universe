@@ -50,69 +50,34 @@
 | **Risk** | Massive infrastructure burden; models lag behind commercial offerings |
 | **Fit** | 5/10 — Not recommended for v1; revisit when project scales |
 
-**RECOMMENDATION:** **Claude API via OpenRouter** as primary brain, **Gemini Flash Lite** as cheap secondary. OpenRouter provides multi-model access through a single API key with automatic failover.
+**RECOMMENDATION:** **Claude API direct** (`@anthropic-ai/sdk`) as primary brain. We have direct Anthropic access — no middleman needed. Lowest latency, full feature access day-one, native tool use and streaming.
 
----
-
-## LAYER 1.5: API GATEWAY — OPENROUTER — RECOMMENDED
-
-> **Why OpenRouter?** Single API key for 300+ models, automatic failover (Anthropic -> Bedrock -> Vertex), pass-through pricing with no per-token markup. You already have access.
-
-### OpenRouter Overview
-
-| Attribute | Detail |
-|-----------|--------|
-| **What** | Unified API gateway for 300+ LLM models from all major providers |
-| **Pricing** | Pass-through (same as provider) + 5.5% fee on credit purchases (min $0.80) |
-| **Streaming** | Full SSE support; `stream: true` with cancellation support |
-| **Tool Use** | Full function calling / tool use with Claude models (OpenAI-format `tools` param) |
-| **STT/TTS** | Not available — use self-hosted solutions (see Layer 4) |
-| **Rate Limits** | No OpenRouter-enforced limits on paid models; only upstream provider limits apply |
-
-### Claude Models on OpenRouter
+### Claude Models (Direct API)
 
 | Model | Input/MTok | Output/MTok | Context | Best For |
 |-------|-----------|-------------|---------|----------|
 | **Claude Opus 4.6** | $5.00 | $25.00 | 1M | Complex reasoning, architecture decisions |
 | **Claude Sonnet 4.6** | $3.00 | $15.00 | 1M | Standard tasks, tool use, coding |
-| **Claude Haiku 4.5** | ~$1.00 | ~$5.00 | 200K | Lightweight tasks, classification |
-
-### Cheap Models for Task Routing
-
-| Model | Input/MTok | Output/MTok | Use Case |
-|-------|-----------|-------------|----------|
-| **Gemini 2.0 Flash Lite** | $0.075 | $0.30 | Ultra-cheap classification, routing |
-| **DeepSeek V3.2** | $0.25 | $0.38 | ~90% of GPT-5.4 at 1/50th cost |
-| **Free models** (DeepSeek R1, Llama 3.3 70B) | $0 | $0 | Development/testing (rate-limited) |
+| **Claude Haiku 4.5** | $1.00 | $5.00 | 200K | Lightweight classification, routing |
 
 ### TypeScript Integration
 
 | Package | Purpose |
 |---------|---------|
-| **`@openrouter/sdk`** | Official SDK — direct control, Zod schemas for tool calls, streaming |
-| **`@openrouter/ai-sdk-provider`** | Vercel AI SDK provider — best for Next.js integration |
-| **OpenAI SDK compat** | Use standard `openai` npm package with base URL `https://openrouter.ai/api/v1` |
+| **`@anthropic-ai/sdk`** | Official Anthropic SDK — full tool use, streaming, batching, prompt caching |
+| **`claude_agent_sdk`** | Claude Agent SDK — multi-step agentic workflows with tool loops |
+| **Vercel AI SDK + `@ai-sdk/anthropic`** | Best for Next.js streaming UI integration |
 
 ### Recommended Routing Chain
 
 ```
-User Query -> Classifier (Gemini Flash Lite: $0.075/MTok)
+User Query -> Classifier (Claude Haiku 4.5: $1/MTok)
   ├── Simple task -> Claude Haiku 4.5 ($1/MTok)
   ├── Standard task -> Claude Sonnet 4.6 ($3/MTok)
   └── Complex reasoning -> Claude Opus 4.6 ($5/MTok)
 ```
 
-### OpenRouter vs Anthropic Direct
-
-| Factor | OpenRouter | Anthropic Direct |
-|--------|-----------|-----------------|
-| **Multi-model** | 300+ models, one key | Claude only |
-| **Failover** | Automatic across providers | Build yourself |
-| **Latency** | +50-70ms routing overhead | Lowest possible |
-| **Features** | Normalized to OpenAI format | Full Anthropic features day-one |
-| **Best for** | Multi-model routing (our use case) | Claude-only apps needing bleeding-edge features |
-
-**VERDICT:** OpenRouter is the right choice — we need multi-model routing for cost optimization, and the 50-70ms overhead is negligible for an AI assistant.
+> **Note:** OpenRouter ($0 markup, 300+ models) remains an option if we later need non-Claude models (e.g., Gemini for cheap classification). But for the core brain, direct Anthropic API is the right call — zero routing overhead, full native features, no third-party dependency.
 
 ---
 
@@ -585,9 +550,9 @@ const audio = await tts.generate('Hello, I am your JARVIS assistant.', { voice: 
 
 | Tier | Components | Est. Monthly Cost |
 |------|-----------|-------------------|
-| **MVP / Solo Dev** | Claude Haiku via OpenRouter + pgvector + Kokoro TTS (browser) + Transformers.js Whisper (browser) + Vercel Free + Helicone Free | **$10-30/mo** |
-| **Beta Launch** | Claude Sonnet via OpenRouter + faster-whisper (Docker) + Kokoro TTS (server) + Fish Speech voice clone + Vercel Pro + Clerk Free | **$50-150/mo** |
-| **Production** | Claude Opus via OpenRouter + Gemini routing + faster-whisper + Kokoro/Fish Speech + Vercel Pro + Trigger.dev + Clerk Pro + Helicone | **$200-600/mo** |
+| **MVP / Solo Dev** | Claude Haiku (direct API) + pgvector + Kokoro TTS (browser) + Transformers.js Whisper (browser) + Vercel Free + Helicone Free | **$10-30/mo** |
+| **Beta Launch** | Claude Sonnet (direct API) + faster-whisper (Docker) + Kokoro TTS (server) + Fish Speech voice clone + Vercel Pro + Clerk Free | **$50-150/mo** |
+| **Production** | Claude Opus (direct API) + Haiku routing + faster-whisper + Kokoro/Fish Speech + Vercel Pro + Trigger.dev + Clerk Pro + Helicone | **$200-600/mo** |
 | **Scale** | Multi-model routing + Deepgram/ElevenLabs premium fallback + custom infrastructure | **$800-2,500+/mo** |
 
 > **Key insight:** Free voice stack saves $100-300/mo compared to previous Deepgram + ElevenLabs recommendation.
@@ -598,9 +563,8 @@ const audio = await tts.generate('Hello, I am your JARVIS assistant.', { voice: 
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| **Intelligence** | Claude Opus/Sonnet 4.6 (primary brain) | Best reasoning, tool use, and agentic behavior |
-| **API Gateway** | OpenRouter | Multi-model routing, single API key, automatic failover |
-| **Cheap Tasks** | Gemini Flash Lite via OpenRouter ($0.075/MTok) | 40x cheaper than Opus for classification/routing |
+| **Intelligence** | Claude Opus/Sonnet 4.6 via direct Anthropic API | Best reasoning, tool use, agentic behavior — no middleman |
+| **Cheap Tasks** | Claude Haiku 4.5 ($1/MTok) | 5x cheaper than Opus for classification/routing |
 | **Agent Framework** | Claude Agent SDK + Vercel AI SDK | Native tool use + streaming UI |
 | **Memory** | pgvector + RAG pipeline | Zero new infrastructure |
 | **Voice (STT)** | Transformers.js Whisper (browser) + faster-whisper (server) | **Free**, 99+ languages, near-human accuracy |
