@@ -1,0 +1,49 @@
+name: Update Stock Prices
+
+on:
+  schedule:
+    # Run at market close: 4:30 PM ET (20:30 UTC) on weekdays
+    - cron: '30 20 * * 1-5'
+    # Run again at 6 PM ET (22:00 UTC) to catch any delayed data
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      update_entries:
+        description: 'Update entry prices instead of current prices'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write credentials file
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: echo "$GOOGLE_CREDENTIALS" > credentials.json
+
+      - name: Update stock prices
+        if: ${{ github.event.inputs.update_entries != 'true' }}
+        run: python stock_price_updater.py
+
+      - name: Update entry prices
+        if: ${{ github.event.inputs.update_entries == 'true' }}
+        run: python stock_price_updater.py --update-entries
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f credentials.json
